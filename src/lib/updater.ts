@@ -18,7 +18,7 @@
  * и никуда не лезет (ни одного сетевого запроса).
  */
 
-export const APP_VERSION = '0.1.3';
+export const APP_VERSION = '0.1.4';
 
 /** Переключить в true после настройки ключа и endpoint (см. выше). */
 export const UPDATE_CONFIGURED = true;
@@ -164,6 +164,12 @@ export interface ChangelogEntry {
  * но история хранится здесь — сервер отдаёт только последний релиз.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.1.4',
+    date: '19 сентября 2026',
+    title: 'Крестик закрывает, логотип «Мир Робот»',
+    notes: 'Исправлено закрытие окна, логотип в сайдбаре и установщике, 6 готовых тем оформления.',
+  },
   {
     version: '0.1.3',
     date: '19 сентября 2026',

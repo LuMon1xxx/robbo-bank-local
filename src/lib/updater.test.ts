@@ -42,7 +42,7 @@ describe('updater helpers', () => {
   });
 
   it('getAppVersion: вне Tauri возвращает константу', async () => {
-    expect(await getAppVersion()).toBe('0.1.3');
+    expect(await getAppVersion()).toBe('0.1.4');
   });
 
   it('автопроверка: интервал — раз в полдня', () => {
@@ -64,7 +64,7 @@ describe('updater helpers', () => {
 
   it('CHANGELOG: свежие сверху, у каждой версии есть описание', () => {
     expect(CHANGELOG.length).toBeGreaterThan(0);
-    expect(CHANGELOG[0].version).toBe('0.1.3');
+    expect(CHANGELOG[0].version).toBe('0.1.4');
     for (const e of CHANGELOG) {
       expect(e.version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(e.notes.length).toBeGreaterThan(0);

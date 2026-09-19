@@ -7,7 +7,6 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
-  Coins,
 } from 'lucide-react';
 import { localRepo, type Student } from './lib/localRepo';
 import { mapBusinessError } from './lib/ui-validation';
@@ -182,9 +181,11 @@ export default function App() {
         )}
       >
         <div className={cn('flex items-center gap-2.5 px-3 py-4', collapsed && 'justify-center px-0')}>
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary-600)]">
-            <Coins className="size-4 text-white" aria-hidden="true" />
-          </div>
+          <img
+            src="logo-source.png"
+            alt="Мир Робот"
+            className="size-8 shrink-0 rounded-lg object-cover ring-1 ring-[var(--color-border-color)]"
+          />
           {!collapsed && (
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-[var(--color-fg)]">Мир Робот</div>
