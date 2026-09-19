@@ -103,7 +103,7 @@ describe('splitSqlStatements', () => {
     expect(stmts.filter((s) => s.startsWith('PRAGMA'))).toHaveLength(3);
     expect(stmts.filter((s) => s.startsWith('CREATE TABLE'))).toHaveLength(7);
     expect(stmts.filter((s) => s.startsWith('INSERT INTO'))).toHaveLength(10);
-    expect(stmts).toContain('PRAGMA user_version = 1');
+    expect(stmts).toContain('PRAGMA user_version = 2');
     expect(stmts.some((s) => s.includes('CREATE TABLE IF NOT EXISTS operation_presets'))).toBe(
       true,
     );
@@ -274,7 +274,7 @@ describe('localRepo snapshots (WP1)', () => {
     expect(repo2.getStudent(s.id)?.balance).toBe(15);
     expect(repo2.listOperations()).toHaveLength(1);
     expect(repo2.listPresets()).toHaveLength(1);
-    expect(repo2.listGroups()).toEqual([{ name: 'G1', count: 1 }]);
+    expect(repo2.listGroups()).toEqual([{ name: 'G1', count: 1, weekday: '', time: '' }]);
 
     // Инварианты живы: операция после replaceAll работает и пересчитывает баланс.
     repo2.addOperation({ student_id: s.id, op_type: 'write_off', amount: 5 });

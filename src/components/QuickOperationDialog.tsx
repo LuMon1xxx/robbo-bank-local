@@ -161,7 +161,7 @@ export function QuickOperationDialog({ student, authorName, onClose, onDone, onC
               <Button
                 key={r.id}
                 type="button"
-                variant={opType === 'accrual' ? 'success' : 'default'}
+                variant="default"
                 disabled={submitting || (opType === 'write_off' && !canWriteOff)}
                 onClick={() => {
                   setSelectedReasonId(r.id);

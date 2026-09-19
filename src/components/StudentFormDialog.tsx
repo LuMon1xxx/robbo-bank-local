@@ -35,17 +35,16 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
   const [lastName, setLastName] = useState(initial.lastName);
   const [firstName, setFirstName] = useState(initial.firstName);
   const [patronymic, setPatronymic] = useState(initial.patronymic);
-  // Группы: выбираются из существующих, новую можно вбить прямо здесь.
+  // Группы: только существующие (создаются в разделе «Группы»).
+  // Старое свободное название (из ранних версий) показываем как есть, чтобы не потерять данные.
   const groups = useMemo(() => localRepo.listGroups(), []);
   const initialGroup = student?.group_name ?? '';
+  const legacyGroup = initialGroup && !groups.some((g) => g.name === initialGroup) ? initialGroup : '';
   const [groupSel, setGroupSel] = useState(() => {
     if (!initialGroup) return '';
-    return groups.some((g) => g.name === initialGroup) ? initialGroup : '__new__';
+    return groups.some((g) => g.name === initialGroup) ? initialGroup : initialGroup;
   });
-  const [groupNew, setGroupNew] = useState(() =>
-    initialGroup && !groups.some((g) => g.name === initialGroup) ? initialGroup : '',
-  );
-  const resolvedGroup = groupSel === '__new__' ? groupNew : groupSel;
+  const resolvedGroup = groupSel;
   const [phone, setPhone] = useState(student?.parent_phone ?? '');
   const [birth, setBirth] = useState(student?.birth_date ?? '');
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -106,7 +105,6 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
           setFirstName('');
           setPatronymic('');
           setGroupSel('');
-          setGroupNew('');
           setPhone('');
           setBirth('');
           setFieldErrors({});
@@ -152,18 +150,12 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
               {g.name} ({g.count})
             </option>
           ))}
-          <option value="__new__">＋ Новая группа…</option>
+          {legacyGroup !== '' && <option value={legacyGroup}>{legacyGroup}</option>}
         </Select>
-        {groupSel === '__new__' && (
-          <Input
-            id="st-group-new"
-            value={groupNew}
-            onChange={(e) => setGroupNew(e.target.value)}
-            placeholder="Название, до 10 символов"
-            maxLength={10}
-            className="mt-1.5"
-            data-testid="st-group-new"
-          />
+        {groups.length === 0 && legacyGroup === '' && (
+          <p className="mt-1 text-xs text-[var(--color-muted-fg)]">
+            Групп пока нет — сначала создайте группу в разделе «Группы».
+          </p>
         )}
       </div>
       {fieldErrors.group && <p className="mt-1 text-xs text-[var(--color-danger-text)]">{fieldErrors.group}</p>}

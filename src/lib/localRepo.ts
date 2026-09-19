@@ -105,6 +105,18 @@ export interface GroupInfo {
   name: string;
   /** Число активных учеников в группе. */
   count: number;
+  /** День недели занятий ('' = не задан). */
+  weekday: string;
+  /** Время занятий HH:MM ('' = не задано). */
+  time: string;
+}
+
+/** Дни недели для расписания групп. */
+export const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] as const;
+
+/** «Пн 18:00» / «Пн» / «18:00» / '' — для чипов и списков. */
+export function formatGroupSchedule(g: Pick<GroupInfo, 'weekday' | 'time'>): string {
+  return [g.weekday, g.time].filter(Boolean).join(' ');
 }
 
 export interface LocalRepo {
@@ -137,8 +149,13 @@ export interface LocalRepo {
   // ---- WP2: группы (локальная single-group модель: group_name + group_members) ----
   /** Все группы (явные + встреченные в group_name), с числом активных учеников. */
   listGroups(): GroupInfo[];
-  /** Создать пустую группу (только название). */
-  createGroup(name: string): { id: number; name: string };
+  /** Создать пустую группу (название + необязательное расписание). */
+  createGroup(
+    name: string,
+    schedule?: { weekday?: string; time?: string },
+  ): { id: number; name: string; weekday: string; time: string };
+  /** Расписание существующей группы (создаёт строку, если группа была виртуальной). */
+  setGroupSchedule(name: string, schedule: { weekday?: string; time?: string }): void;
   /** Переименовать группу: groups + students.group_name + group_members. */
   renameGroup(oldName: string, newName: string): void;
   /** Удалить группу: ученики остаются, group_name сбрасывается в ''. */
@@ -183,7 +200,7 @@ export interface DbState {
   operations: Operation[];
   reasons: ReasonTemplate[];
   teachers: Teacher[];
-  groups: { id: number; name: string }[];
+  groups: { id: number; name: string; weekday: string; time: string }[];
   group_members: { student_id: string; group_name: string }[];
   presets: OperationPreset[];
 }
@@ -267,7 +284,12 @@ function normalizeSnapshot(parsed: DbState, source: string): DbState {
       parsed.reasons && parsed.reasons.length > 0 ? parsed.reasons : seededState().reasons,
     teachers:
       parsed.teachers && parsed.teachers.length > 0 ? parsed.teachers : seededState().teachers,
-    groups: parsed.groups ?? [],
+    groups: (parsed.groups ?? []).map((g) => ({
+      id: Number(g.id) || 0,
+      name: typeof g.name === 'string' ? g.name : '',
+      weekday: typeof g.weekday === 'string' ? g.weekday : '',
+      time: typeof g.time === 'string' ? g.time : '',
+    })),
     group_members: parsed.group_members ?? [],
     presets: parsed.presets ?? [],
   };
@@ -327,6 +349,22 @@ function assertGroupName(group_name: string): void {
   }
 }
 
+/** Расписание необязательно, но если задано — строго день из списка и время ЧЧ:ММ. */
+function assertGroupSchedule(schedule: { weekday?: string; time?: string }): {
+  weekday: string;
+  time: string;
+} {
+  const weekday = (schedule.weekday ?? '').trim();
+  const time = (schedule.time ?? '').trim();
+  if (weekday !== '' && !(WEEKDAYS as readonly string[]).includes(weekday)) {
+    throw new ValidationError(`group weekday must be one of ${WEEKDAYS.join(', ')}`);
+  }
+  if (time !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    throw new ValidationError('group time must be HH:MM');
+  }
+  return { weekday, time };
+}
+
 function findReason(reasons: ReasonTemplate[], reason_id: number | null): ReasonTemplate {
   const reason = reasons.find((r) => r.id === reason_id);
   if (!reason) throw new ValidationError(`unknown reason_id: ${reason_id}`);
@@ -361,7 +399,7 @@ export function createLocalRepo(): LocalRepo {
   const ensureGroupRow = (name: string): void => {
     if (!state.groups.some((g) => g.name === name)) {
       const nextId = state.groups.reduce((m, g) => Math.max(m, g.id), 0) + 1;
-      state.groups.push({ id: nextId, name });
+      state.groups.push({ id: nextId, name, weekday: '', time: '' });
     }
   };
 
@@ -584,6 +622,7 @@ export function createLocalRepo(): LocalRepo {
       const names = new Set<string>();
       for (const g of state.groups) if (g.name) names.add(g.name);
       for (const s of state.students) if (s.group_name) names.add(s.group_name);
+      const byName = new Map(state.groups.map((g) => [g.name, g]));
       const counts = new Map<string, number>();
       for (const s of state.students) {
         if (s.status !== 'active' || !s.group_name) continue;
@@ -591,20 +630,41 @@ export function createLocalRepo(): LocalRepo {
       }
       return [...names]
         .sort((a, b) => a.localeCompare(b, 'ru'))
-        .map((name) => ({ name, count: counts.get(name) ?? 0 }));
+        .map((name) => ({
+          name,
+          count: counts.get(name) ?? 0,
+          weekday: byName.get(name)?.weekday ?? '',
+          time: byName.get(name)?.time ?? '',
+        }));
     },
 
-    createGroup(name: string): { id: number; name: string } {
+    createGroup(
+      name: string,
+      schedule?: { weekday?: string; time?: string },
+    ): { id: number; name: string; weekday: string; time: string } {
       const title = assertGroupTitle(name);
+      const sched = assertGroupSchedule(schedule ?? {});
       if (state.groups.some((g) => g.name === title)) {
         throw new ValidationError(`group already exists: ${title}`);
       }
       // Группа может уже встречаться в students.group_name — просто материализуем строку.
       const nextId = state.groups.reduce((m, g) => Math.max(m, g.id), 0) + 1;
-      const row = { id: nextId, name: title };
+      const row = { id: nextId, name: title, ...sched };
       state.groups.push(row);
       persist();
       return { ...row };
+    },
+
+    setGroupSchedule(name: string, schedule: { weekday?: string; time?: string }): void {
+      const title = name.trim();
+      const sched = assertGroupSchedule(schedule);
+      ensureGroupRow(title);
+      const row = state.groups.find((g) => g.name === title);
+      if (row) {
+        row.weekday = sched.weekday;
+        row.time = sched.time;
+      }
+      persist();
     },
 
     renameGroup(oldName: string, newName: string): void {
@@ -618,7 +678,13 @@ export function createLocalRepo(): LocalRepo {
         throw new ValidationError(`group already exists: ${to}`);
       }
       if (from === to) return;
+      const prev = state.groups.find((g) => g.name === from);
       ensureGroupRow(to);
+      const target = state.groups.find((g) => g.name === to);
+      if (target && prev) {
+        target.weekday = prev.weekday ?? '';
+        target.time = prev.time ?? '';
+      }
       state.groups = state.groups.filter((g) => g.name !== from);
       for (const s of state.students) if (s.group_name === from) s.group_name = to;
       for (const m of state.group_members) if (m.group_name === from) m.group_name = to;

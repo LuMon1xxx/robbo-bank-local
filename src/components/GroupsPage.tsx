@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pencil, Plus, X } from 'lucide-react';
-import { localRepo } from '../lib/localRepo';
+import { WEEKDAYS, formatGroupSchedule, localRepo } from '../lib/localRepo';
 import { mapBusinessError } from '../lib/ui-validation';
 import { BulkAccrualBar } from './BulkAccrualBar';
 import { Modal } from './Modal';
@@ -30,8 +30,12 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newWeekday, setNewWeekday] = useState('');
+  const [newTime, setNewTime] = useState('');
   const [renameTarget, setRenameTarget] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameWeekday, setRenameWeekday] = useState('');
+  const [renameTime, setRenameTime] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [moveTarget, setMoveTarget] = useState<{ id: string; fullName: string; from: string } | null>(null);
   const [moveValue, setMoveValue] = useState('');
@@ -127,6 +131,18 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
           <p className="text-[13px] text-[var(--color-muted-fg)]">Групп пока нет — создайте первую кнопкой «+ Группа».</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => { setSelectedGroup(''); setSelectedIds(new Set()); }}
+              aria-pressed={selectedGroup === ''}
+              data-testid="group-chip-all"
+              className={cn(
+                'inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border-color)] px-2.5 py-1 text-[13px] font-bold text-[var(--color-fg)]',
+                selectedGroup === '' && 'bg-[var(--color-primary-100)]',
+              )}
+            >
+              Все группы
+            </button>
             {groups.map((g) => (
               <span
                 key={g.name}
@@ -138,12 +154,12 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
                 <button
                   type="button"
                   onClick={() => { setSelectedGroup(selectedGroup === g.name ? '' : g.name); setSelectedIds(new Set()); }}
-                  title="Показать состав"
+                  title={formatGroupSchedule(g) ? `Занятия: ${formatGroupSchedule(g)}. Нажмите, чтобы показать состав` : 'Показать состав'}
                   className="cursor-pointer bg-transparent text-[13px] font-bold text-[var(--color-fg)]"
                 >
-                  {g.name} · {g.count}
+                  {g.name}{formatGroupSchedule(g) ? ` · ${formatGroupSchedule(g)}` : ''} · {g.count}
                 </button>
-                <Button type="button" variant="ghost" size="icon-xs" title="Переименовать" onClick={() => { setRenameTarget(g.name); setRenameValue(g.name); }}>
+                <Button type="button" variant="ghost" size="icon-xs" title="Переименовать" onClick={() => { setRenameTarget(g.name); setRenameValue(g.name); setRenameWeekday(g.weekday); setRenameTime(g.time); }}>
                   <Pencil className="size-3" aria-hidden="true" />
                 </Button>
                 <Button type="button" variant="ghost" size="icon-xs" title="Удалить группу" onClick={() => setDeleteTarget(g.name)}>
@@ -219,16 +235,37 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
       )}
 
       {createOpen && (
-        <Modal title="Новая группа" subtitle="Название — до 10 символов" onClose={() => setCreateOpen(false)} maxWidth={400}>
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Например: А-1" maxLength={10} />
+        <Modal title="Новая группа" subtitle="Название — до 10 символов, расписание — по желанию" onClose={() => setCreateOpen(false)} maxWidth={400}>
+          <Label className="text-xs text-[var(--color-muted-fg)]">
+            Название
+            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Например: А-1" maxLength={10} className="mt-1" data-testid="group-new-name" />
+          </Label>
+          <div className="mt-2 flex gap-2">
+            <Label className="flex-1 text-xs text-[var(--color-muted-fg)]">
+              День недели
+              <Select value={newWeekday} onChange={(e) => setNewWeekday(e.target.value)} className="mt-1" data-testid="group-new-weekday">
+                <option value="">Не выбран</option>
+                {WEEKDAYS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex-1 text-xs text-[var(--color-muted-fg)]">
+              Время
+              <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} className="mt-1" data-testid="group-new-time" />
+            </Label>
+          </div>
           <div className="mt-3 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Отмена</Button>
             <Button
               type="button"
+              data-testid="group-create-submit"
               onClick={() => {
-                run(() => localRepo.createGroup(newName), `Группа «${newName.trim()}» создана`);
+                run(() => localRepo.createGroup(newName, { weekday: newWeekday, time: newTime }), `Группа «${newName.trim()}» создана`);
                 setCreateOpen(false);
                 setNewName('');
+                setNewWeekday('');
+                setNewTime('');
               }}
             >
               Создать
@@ -239,16 +276,38 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
 
       {renameTarget && (
         <Modal title={`Переименовать «${renameTarget}»`} onClose={() => setRenameTarget(null)} maxWidth={400}>
-          <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} maxLength={10} />
+          <Label className="text-xs text-[var(--color-muted-fg)]">
+            Название
+            <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} maxLength={10} className="mt-1" />
+          </Label>
+          <div className="mt-2 flex gap-2">
+            <Label className="flex-1 text-xs text-[var(--color-muted-fg)]">
+              День недели
+              <Select value={renameWeekday} onChange={(e) => setRenameWeekday(e.target.value)} className="mt-1">
+                <option value="">Не выбран</option>
+                {WEEKDAYS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </Select>
+            </Label>
+            <Label className="flex-1 text-xs text-[var(--color-muted-fg)]">
+              Время
+              <Input type="time" value={renameTime} onChange={(e) => setRenameTime(e.target.value)} className="mt-1" />
+            </Label>
+          </div>
           <div className="mt-3 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setRenameTarget(null)}>Отмена</Button>
             <Button
               type="button"
               onClick={() => {
                 const from = renameTarget;
-                run(() => localRepo.renameGroup(from, renameValue), `Группа «${from}» → «${renameValue.trim()}»`);
+                const to = renameValue.trim();
+                run(() => {
+                  localRepo.renameGroup(from, renameValue);
+                  localRepo.setGroupSchedule(to || from, { weekday: renameWeekday, time: renameTime });
+                }, `Группа «${from}» → «${to}»`);
                 setRenameTarget(null);
-                if (selectedGroup === from) setSelectedGroup(renameValue.trim());
+                if (selectedGroup === from) setSelectedGroup(to);
               }}
             >
               Сохранить

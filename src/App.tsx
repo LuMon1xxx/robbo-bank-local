@@ -22,21 +22,10 @@ import { OperationDialog } from './components/OperationDialog';
 import { ArchiveDialog, StudentFormDialog } from './components/StudentFormDialog';
 import { SettingsPage } from './components/SettingsPage';
 import ThemeToggle from './components/ThemeToggle';
-import { Select } from './ui/select';
 
-const TEACHER_KEY = 'robbo-bank-local:teacher';
-const TEACHERS = ['Учитель 1', 'Учитель 2'];
+/** Учитель один (решение: второго убираем, выбор не нужен). */
+const TEACHER_NAME = 'Учитель';
 const SIDEBAR_KEY = 'robbo.sidebar.collapsed';
-
-function loadTeacher(): string {
-  try {
-    const v = localStorage.getItem(TEACHER_KEY);
-    if (v && TEACHERS.includes(v)) return v;
-  } catch {
-    // ignore
-  }
-  return TEACHERS[0];
-}
 
 function initialCollapsed(): boolean {
   try {
@@ -76,7 +65,7 @@ const TITLES: Record<Tab, string> = {
 };
 
 export default function App() {
-  const [teacher, setTeacher] = useState(loadTeacher);
+  const teacher = TEACHER_NAME;
   const [tab, setTab] = useState<Tab>('students');
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [version, setVersion] = useState(0);
@@ -103,15 +92,6 @@ export default function App() {
   }, [tab, collapsed]);
 
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
-
-  function switchTeacher(name: string) {
-    setTeacher(name);
-    try {
-      localStorage.setItem(TEACHER_KEY, name);
-    } catch {
-      // ignore
-    }
-  }
 
   function toggleCollapsed() {
     setCollapsed((v) => {
@@ -247,18 +227,6 @@ export default function App() {
             )}
           </div>
 
-          {!collapsed && (
-            <div className="mb-1 px-1.5">
-              <Select value={teacher} onChange={(e) => switchTeacher(e.target.value)} aria-label="Учитель">
-                {TEACHERS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
-
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -280,15 +248,6 @@ export default function App() {
           <div className="text-sm font-semibold text-[var(--color-fg)]">{TITLES[tab]}</div>
           <div className="flex items-center gap-2">
             <BackupButtons compact onChanged={refresh} onToast={(m) => showToast(m, null)} onError={(m) => showToast(m, null)} />
-            {collapsed && (
-              <Select value={teacher} onChange={(e) => switchTeacher(e.target.value)} aria-label="Учитель" className="w-36">
-                {TEACHERS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-            )}
             <ThemeToggle />
           </div>
         </header>

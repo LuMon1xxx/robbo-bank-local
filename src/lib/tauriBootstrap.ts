@@ -99,6 +99,21 @@ export async function bootStorage(): Promise<'tauri-sqlite' | 'browser-storage'>
       await db.execute(stmt);
     }
 
+    // Миграция v1 → v2: расписание групп. CREATE TABLE IF NOT EXISTS
+    // не добавляет колонки в существующие базы, поэтому ALTER отдельно.
+    // Повторный запуск: колонки уже есть → ловим duplicate column и молчим.
+    for (const ddl of [
+      "ALTER TABLE groups ADD COLUMN weekday TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE groups ADD COLUMN time TEXT NOT NULL DEFAULT ''",
+    ]) {
+      try {
+        await db.execute(ddl);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!/duplicate column/i.test(msg)) throw e;
+      }
+    }
+
     const sqlite = await loadSnapshot(db);
     const local = readLocalSnapshot();
     const merged = mergeOnBoot(sqlite, local);

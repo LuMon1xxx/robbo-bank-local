@@ -188,6 +188,8 @@ interface OperationRow {
 interface GroupRow {
   id: number;
   name: string;
+  weekday: string | null;
+  time: string | null;
 }
 
 interface GroupMemberRow {
@@ -216,7 +218,7 @@ export async function loadSnapshot(db: SqliteDb): Promise<DbState> {
         'SELECT id, label, kind, default_amount, is_active FROM reason_templates ORDER BY rowid',
       ),
       db.select<TeacherRow[]>('SELECT id, name FROM teachers ORDER BY rowid'),
-      db.select<GroupRow[]>('SELECT id, name FROM groups ORDER BY rowid'),
+      db.select<GroupRow[]>('SELECT id, name, weekday, time FROM groups ORDER BY rowid'),
       db.select<GroupMemberRow[]>('SELECT student_id, group_name FROM group_members ORDER BY rowid'),
       db.select<PresetRow[]>(
         'SELECT id, label, amount, reason_id FROM operation_presets ORDER BY rowid',
@@ -273,7 +275,12 @@ export async function loadSnapshot(db: SqliteDb): Promise<DbState> {
     operations,
     reasons,
     teachers,
-    groups: groupRows.map((g) => ({ id: Number(g.id), name: g.name })),
+    groups: groupRows.map((g) => ({
+      id: Number(g.id),
+      name: g.name,
+      weekday: g.weekday ?? '',
+      time: g.time ?? '',
+    })),
     group_members: memberRows.map((m) => ({ student_id: m.student_id, group_name: m.group_name })),
     presets,
   };
@@ -331,7 +338,12 @@ export async function saveSnapshot(db: SqliteDb, state: DbState): Promise<void> 
       );
     }
     for (const g of state.groups) {
-      await db.execute('INSERT INTO groups (id, name) VALUES (?, ?)', [g.id, g.name]);
+      await db.execute('INSERT INTO groups (id, name, weekday, time) VALUES (?, ?, ?, ?)', [
+        g.id,
+        g.name,
+        g.weekday ?? '',
+        g.time ?? '',
+      ]);
     }
     for (const m of state.group_members) {
       await db.execute('INSERT INTO group_members (student_id, group_name) VALUES (?, ?)', [

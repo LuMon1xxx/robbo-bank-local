@@ -54,7 +54,9 @@ CREATE TABLE IF NOT EXISTS operations (
 
 CREATE TABLE IF NOT EXISTS groups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE
+  name TEXT NOT NULL UNIQUE,
+  weekday TEXT NOT NULL DEFAULT '',
+  time TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS group_members (
@@ -83,4 +85,4 @@ INSERT INTO reason_templates (label, kind, default_amount, is_active) SELECT 'О
 INSERT INTO reason_templates (label, kind, default_amount, is_active) SELECT 'Штраф', 'write_off', 5, 1 WHERE NOT EXISTS (SELECT 1 FROM reason_templates WHERE label = 'Штраф');
 INSERT INTO reason_templates (label, kind, default_amount, is_active) SELECT 'Нарушение', 'write_off', 10, 1 WHERE NOT EXISTS (SELECT 1 FROM reason_templates WHERE label = 'Нарушение');
 
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;

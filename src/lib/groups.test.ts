@@ -71,4 +71,47 @@ describe('localRepo groups (WP2)', () => {
     expect(repo2.listGroups().some((g) => g.name === 'А-1')).toBe(true);
     expect(repo2.getStudent(s.id)?.group_name).toBe('А-1');
   });
+
+  it('createGroup с расписанием: день + время видны в listGroups', () => {
+    repo.createGroup('А-1', { weekday: 'Пн', time: '18:00' });
+    expect(repo.listGroups().find((g) => g.name === 'А-1')).toMatchObject({
+      weekday: 'Пн',
+      time: '18:00',
+    });
+  });
+
+  it('расписание необязательно: без него пустые строки', () => {
+    repo.createGroup('Б-2');
+    expect(repo.listGroups().find((g) => g.name === 'Б-2')).toMatchObject({ weekday: '', time: '' });
+  });
+
+  it('расписание валидируется: левый день и время — ошибка', () => {
+    expect(() => repo.createGroup('В-1', { weekday: 'Фундень' })).toThrow();
+    expect(() => repo.createGroup('В-1', { time: '25:99' })).toThrow();
+    expect(() => repo.createGroup('В-1', { time: '18-00' })).toThrow();
+  });
+
+  it('setGroupSchedule меняет расписание, renameGroup его не теряет', () => {
+    repo.createGroup('А-1');
+    repo.setGroupSchedule('А-1', { weekday: 'Ср', time: '17:30' });
+    expect(repo.listGroups().find((g) => g.name === 'А-1')).toMatchObject({
+      weekday: 'Ср',
+      time: '17:30',
+    });
+    repo.renameGroup('А-1', 'А-2');
+    expect(repo.listGroups().find((g) => g.name === 'А-2')).toMatchObject({
+      weekday: 'Ср',
+      time: '17:30',
+    });
+  });
+
+  it('export/import хранит расписание групп', () => {
+    repo.createGroup('А-1', { weekday: 'Пн', time: '18:00' });
+    const repo2 = createLocalRepo();
+    repo2.importJson(repo.exportJson());
+    expect(repo2.listGroups().find((g) => g.name === 'А-1')).toMatchObject({
+      weekday: 'Пн',
+      time: '18:00',
+    });
+  });
 });
