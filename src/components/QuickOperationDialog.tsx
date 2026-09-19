@@ -26,12 +26,13 @@ function uid(): string {
 }
 
 /**
- * Быстрая операция: сверху пресеты (клик = начисление в 1 клик),
- * ниже чипы причин + своя сумма.
+ * Быстрая операция: пресеты — начисление в 1 клик;
+ * причина + своя сумма — выбор причины и кнопка «Начислить/Списать».
  */
 export function QuickOperationDialog({ student, authorName, onClose, onDone, onChanged }: QuickOperationDialogProps) {
   const [opType, setOpType] = useState<'accrual' | 'write_off'>('accrual');
   const [customAmount, setCustomAmount] = useState('');
+  const [selectedReasonId, setSelectedReasonId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +45,11 @@ export function QuickOperationDialog({ student, authorName, onClose, onDone, onC
 
   const canWriteOff = student.balance > 0;
   const inDebt = student.balance < 0;
+
+  const selectedReason = reasons.find((r) => r.id === selectedReasonId) ?? reasons[0] ?? null;
+  const parsedCustom = customAmount.trim() === '' ? null : parseAmountText(customAmount.trim());
+  const customInvalid = customAmount.trim() !== '' && parsedCustom == null;
+  const effectiveAmount = parsedCustom ?? selectedReason?.default_amount ?? 10;
 
   async function submit(reasonId: number, amount: number) {
     if (submitting) return;
@@ -70,20 +76,6 @@ export function QuickOperationDialog({ student, authorName, onClose, onDone, onC
     }
   }
 
-  function handleChip(reasonId: number, defaultAmount: number) {
-    let amount = defaultAmount;
-    const raw = customAmount.trim();
-    if (raw !== '') {
-      const parsed = parseAmountText(raw);
-      if (parsed == null) {
-        setError('Введи сумму от 1 до 100 000 целым числом');
-        return;
-      }
-      amount = parsed;
-    }
-    void submit(reasonId, amount);
-  }
-
   function handlePreset(reasonId: number | null, amount: number) {
     const rid = reasonId ?? reasons[0]?.id;
     if (rid == null) {
@@ -91,6 +83,17 @@ export function QuickOperationDialog({ student, authorName, onClose, onDone, onC
       return;
     }
     void submit(rid, amount);
+  }
+
+  /** Кнопка «Начислить/Списать»: выбранная причина + своя сумма (или сумма причины). */
+  function handleSubmit() {
+    if (submitting || !selectedReason) return;
+    if (opType === 'write_off' && !canWriteOff) return;
+    if (customInvalid) {
+      setError('Введи сумму от 1 до 100 000 целым числом');
+      return;
+    }
+    void submit(selectedReason.id, effectiveAmount);
   }
 
   return (
@@ -146,41 +149,67 @@ export function QuickOperationDialog({ student, authorName, onClose, onDone, onC
       )}
 
       <Label className="mb-2.5 block text-xs text-[var(--color-muted-fg)]">
-        Своя сумма (необязательно — иначе по шаблону)
+        Причина
+      </Label>
+      {reasons.length === 0 ? (
+        <p className="py-3 text-center text-[13px] text-[var(--color-muted-fg)]">Нет доступных причин</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Причина операции">
+          {reasons.map((r) => {
+            const active = selectedReason?.id === r.id;
+            return (
+              <Button
+                key={r.id}
+                type="button"
+                variant={opType === 'accrual' ? 'success' : 'default'}
+                disabled={submitting || (opType === 'write_off' && !canWriteOff)}
+                onClick={() => {
+                  setSelectedReasonId(r.id);
+                  setError(null);
+                }}
+                aria-pressed={active}
+                title={`Сумма по умолчанию: ${r.default_amount}`}
+                className={cn('justify-start', active && 'ring-2 ring-[var(--color-primary-300)]')}
+              >
+                {r.label} {opType === 'accrual' ? '+' : '−'}{r.default_amount}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+
+      <Label className="mt-3 mb-2.5 block text-xs text-[var(--color-muted-fg)]">
+        Своя сумма (необязательно — иначе сумма выбранной причины)
         <Input
           type="number"
           inputMode="numeric"
           min={1}
           max={100000}
           step={1}
-          placeholder="по шаблону"
+          placeholder={selectedReason ? `по причине: ${selectedReason.default_amount}` : 'сумма'}
           value={customAmount}
           disabled={submitting}
           onChange={(e) => setCustomAmount(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
           aria-label="Своя сумма операции"
           className="mt-1"
         />
       </Label>
 
-      {reasons.length === 0 ? (
-        <p className="py-3 text-center text-[13px] text-[var(--color-muted-fg)]">Нет доступных причин</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-1.5">
-          {reasons.map((r) => (
-            <Button
-              key={r.id}
-              type="button"
-              variant={opType === 'accrual' ? 'success' : 'default'}
-              disabled={submitting || (opType === 'write_off' && !canWriteOff)}
-              onClick={() => handleChip(r.id, r.default_amount || 10)}
-              title={`Сумма по умолчанию: ${r.default_amount}`}
-              className="justify-start"
-            >
-              {r.label} {opType === 'accrual' ? '+' : '−'}{r.default_amount}
-            </Button>
-          ))}
-        </div>
-      )}
+      <Button
+        type="button"
+        disabled={submitting || !selectedReason || customInvalid || (opType === 'write_off' && !canWriteOff)}
+        onClick={handleSubmit}
+        data-testid="quick-submit"
+        className="mt-1 w-full"
+      >
+        {submitting ? 'Сохранение…' : `${opType === 'accrual' ? 'Начислить' : 'Списать'} ${effectiveAmount}`}
+      </Button>
 
       {opType === 'write_off' && inDebt && (
         <p className="mt-2.5 rounded-[var(--radius-m)] bg-[var(--color-danger-light)] px-2.5 py-2 text-xs text-[var(--color-danger-text)]">Ученик в долге — списания недоступны. Сначала отмени начисление.</p>
