@@ -130,6 +130,7 @@
    СЕМАНТИЧЕСКИЕ АЛИАСЫ (то, что читают компоненты)
    ========================================================================== */
 :root {
+  color-scheme: light;
   --color-bg: var(--color-background);
   --color-card-bg: var(--color-card);
   --color-raised-bg: var(--color-raised);
@@ -155,6 +156,7 @@
 
 /* Dark: тёплая вечерняя тема (не сине-черная) */
 .dark {
+  color-scheme: dark;
   /* БАЗОВАЯ ПАЛИТРА (утилиты text-foreground / bg-card / border-border
      и т.п. читают именно эти имена) */
   --color-background: #1d1a15;
@@ -852,6 +854,24 @@ a,
 /* Календарь в DatePicker: панель появляется как поповер */
 [data-slot='calendar-popover'] [data-slot='popover-content'] {
   animation: robbo-pop-in var(--dur-panel) var(--ease-smooth);
+}
+
+/* ==========================================================================
+   НАТИВНЫЕ ЭЛЕМЕНТЫ: выпадающие списки и чекбоксы в тёмной теме.
+   Без этого WebView рисует popup списка <select> светлым, а текст пунктов
+   наследует светлый цвет темы — пункты нечитаемы (репорт: «Выберите причину»).
+   color-scheme выше переключает остальные нативные контролы (календарь и т.п.).
+   ========================================================================== */
+select option,
+select optgroup {
+  background-color: var(--color-card-bg);
+  color: var(--color-fg);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-primary-600);
+  cursor: pointer;
 }
 
 /* Скроллбары */
