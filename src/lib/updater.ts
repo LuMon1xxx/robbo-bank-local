@@ -18,7 +18,7 @@
  * и никуда не лезет (ни одного сетевого запроса).
  */
 
-export const APP_VERSION = '0.1.1';
+export const APP_VERSION = '0.1.2';
 
 /** Переключить в true после настройки ключа и endpoint (см. выше). */
 export const UPDATE_CONFIGURED = true;
@@ -29,7 +29,14 @@ export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000; // раз в пол
 export type UpdateStatus =
   | { status: 'unconfigured' }
   | { status: 'uptodate'; version: string }
-  | { status: 'available'; version: string; notes: string | null }
+  | {
+      status: 'available';
+      version: string;
+      currentVersion: string;
+      /** Дата выхода релиза (pub_date из latest.json), null если сервер не прислал. */
+      date: string | null;
+      notes: string | null;
+    }
   | { status: 'downloading'; version: string; progress: number }
   | { status: 'ready'; version: string }
   | { status: 'error'; message: string };
@@ -80,7 +87,13 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
       return { status: 'uptodate', version: await getAppVersion() };
     }
     pendingVersion = update.version;
-    return { status: 'available', version: update.version, notes: update.body ?? null };
+    return {
+      status: 'available',
+      version: update.version,
+      currentVersion: update.currentVersion,
+      date: update.date ?? null,
+      notes: update.body ?? null,
+    };
   } catch (e) {
     return { status: 'error', message: e instanceof Error ? e.message : String(e) };
   }
@@ -129,6 +142,47 @@ export async function relaunchApp(): Promise<void> {
 export function getPendingVersion(): string | null {
   return pendingVersion;
 }
+
+/** «19 сентября 2026» из ISO-даты релиза; пустая строка если даты нет. */
+export function formatReleaseDate(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+}
+
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  title: string;
+  notes: string;
+}
+
+/**
+ * История версий для карточки «Обновления» (пополнять сверху при каждом релизе).
+ * notes для свежих версий прилетают и с сервера (body из latest.json),
+ * но история хранится здесь — сервер отдаёт только последний релиз.
+ */
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.1.2',
+    date: '19 сентября 2026',
+    title: 'Карточка обновлений и удобные группы',
+    notes: 'Видно какая версия стоит и какая вышла, дата релиза и что нового. При создании ученика группы выбираются из списка. Год рождения ограничен 4 цифрами.',
+  },
+  {
+    version: '0.1.1',
+    date: '19 сентября 2026',
+    title: 'Автообновления',
+    notes: 'Приложение само проверяет обновления при запуске и раз в 12 часов, тихо качает и предлагает перезапуститься одной кнопкой.',
+  },
+  {
+    version: '0.1.0',
+    date: '18 сентября 2026',
+    title: 'Первый релиз',
+    notes: 'Ученики, группы, начисления и отчёты, темы оформления, шаблоны операций, импорт из Excel, резервные копии.',
+  },
+];
 
 export interface AutoUpdaterEvents {
   /** Новая версия скачалась и готова — нужен перезапуск. */

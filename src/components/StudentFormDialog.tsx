@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { localRepo, type Student } from '../lib/localRepo';
-import { buildFullName, mapBusinessError, validateStudentForm } from '../lib/ui-validation';
+import { buildFullName, mapBusinessError, validateBirthDate, validateStudentForm } from '../lib/ui-validation';
 import { Modal } from './Modal';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Select } from '../ui/select';
 
 interface StudentFormDialogProps {
   /** null = создание, иначе редактирование. */
@@ -34,9 +35,20 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
   const [lastName, setLastName] = useState(initial.lastName);
   const [firstName, setFirstName] = useState(initial.firstName);
   const [patronymic, setPatronymic] = useState(initial.patronymic);
-  const [group, setGroup] = useState(student?.group_name ?? '');
+  // Группы: выбираются из существующих, новую можно вбить прямо здесь.
+  const groups = useMemo(() => localRepo.listGroups(), []);
+  const initialGroup = student?.group_name ?? '';
+  const [groupSel, setGroupSel] = useState(() => {
+    if (!initialGroup) return '';
+    return groups.some((g) => g.name === initialGroup) ? initialGroup : '__new__';
+  });
+  const [groupNew, setGroupNew] = useState(() =>
+    initialGroup && !groups.some((g) => g.name === initialGroup) ? initialGroup : '',
+  );
+  const resolvedGroup = groupSel === '__new__' ? groupNew : groupSel;
   const [phone, setPhone] = useState(student?.parent_phone ?? '');
   const [birth, setBirth] = useState(student?.birth_date ?? '');
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -46,16 +58,18 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
       lastName,
       firstName,
       patronymic,
-      group,
+      group: resolvedGroup,
       phone: phone.trim(),
       birth,
-      fullName: buildFullName({ lastName, firstName, patronymic, group }),
+      fullName: buildFullName({ lastName, firstName, patronymic, group: resolvedGroup }),
     };
   }
 
   function save(addMore: boolean) {
     if (submitting) return;
-    const errs = validateStudentForm({ lastName, firstName, patronymic, group });
+    const errs = validateStudentForm({ lastName, firstName, patronymic, group: resolvedGroup });
+    const birthErr = validateBirthDate(birth);
+    if (birthErr) errs.birth = birthErr;
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
     const data = collect();
@@ -68,7 +82,7 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
           first_name: firstName.trim(),
           patronymic: patronymic.trim(),
           full_name: data.fullName,
-          group_name: group.trim(),
+          group_name: resolvedGroup.trim(),
           parent_phone: data.phone,
           birth_date: birth,
         });
@@ -81,7 +95,7 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
           first_name: firstName.trim(),
           patronymic: patronymic.trim(),
           full_name: data.fullName,
-          group_name: group.trim(),
+          group_name: resolvedGroup.trim(),
           parent_phone: data.phone,
           birth_date: birth,
         });
@@ -91,7 +105,8 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
           setLastName('');
           setFirstName('');
           setPatronymic('');
-          setGroup('');
+          setGroupSel('');
+          setGroupNew('');
           setPhone('');
           setBirth('');
           setFieldErrors({});
@@ -106,12 +121,12 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
     }
   }
 
-  const field = (label: string, value: string, set: (v: string) => void, opts: { type?: string; id: string }) => (
+  const field = (label: string, value: string, set: (v: string) => void, opts: { type?: string; id: string; max?: string }) => (
     <div>
       <Label className="mt-2 mb-1 block text-[13px] font-semibold" htmlFor={opts.id}>
         {label}
       </Label>
-      <Input id={opts.id} type={opts.type ?? 'text'} value={value} onChange={(e) => set(e.target.value)} />
+      <Input id={opts.id} type={opts.type ?? 'text'} value={value} onChange={(e) => set(e.target.value)} max={opts.max} />
     </div>
   );
 
@@ -121,10 +136,40 @@ export function StudentFormDialog({ student, onClose, onChanged, onDone }: Stude
       {field('Имя', firstName, setFirstName, { id: 'st-first' })}
       {field('Отчество', patronymic, setPatronymic, { id: 'st-patr' })}
       {fieldErrors.fullName && <p className="mt-1 text-xs text-[var(--color-danger-text)]">{fieldErrors.fullName}</p>}
-      {field('Группа (до 10 символов)', group, setGroup, { id: 'st-group' })}
+      <div>
+        <Label className="mt-2 mb-1 block text-[13px] font-semibold" htmlFor="st-group">
+          Группа
+        </Label>
+        <Select
+          id="st-group"
+          value={groupSel}
+          onChange={(e) => setGroupSel(e.target.value)}
+          data-testid="st-group"
+        >
+          <option value="">Без группы</option>
+          {groups.map((g) => (
+            <option key={g.name} value={g.name}>
+              {g.name} ({g.count})
+            </option>
+          ))}
+          <option value="__new__">＋ Новая группа…</option>
+        </Select>
+        {groupSel === '__new__' && (
+          <Input
+            id="st-group-new"
+            value={groupNew}
+            onChange={(e) => setGroupNew(e.target.value)}
+            placeholder="Название, до 10 символов"
+            maxLength={10}
+            className="mt-1.5"
+            data-testid="st-group-new"
+          />
+        )}
+      </div>
       {fieldErrors.group && <p className="mt-1 text-xs text-[var(--color-danger-text)]">{fieldErrors.group}</p>}
       {field('Телефон родителя', phone, setPhone, { id: 'st-phone' })}
-      {field('Дата рождения', birth, setBirth, { type: 'date', id: 'st-birth' })}
+      {field('Дата рождения', birth, setBirth, { type: 'date', id: 'st-birth', max: todayISO })}
+      {fieldErrors.birth && <p className="mt-1 text-xs text-[var(--color-danger-text)]">{fieldErrors.birth}</p>}
       {inlineError && <p className="mt-2.5 rounded-[var(--radius-m)] bg-[var(--color-danger-light)] px-2.5 py-2 text-xs text-[var(--color-danger-text)]">{inlineError}</p>}
       <div className="mt-3.5 flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHANGELOG,
   UPDATE_CHECK_INTERVAL_MS,
   UPDATE_CONFIGURED,
   checkForUpdates,
   downloadAndInstallUpdate,
+  formatReleaseDate,
   getAppVersion,
   isNewer,
   startAutoUpdater,
@@ -40,7 +42,7 @@ describe('updater helpers', () => {
   });
 
   it('getAppVersion: вне Tauri возвращает константу', async () => {
-    expect(await getAppVersion()).toBe('0.1.1');
+    expect(await getAppVersion()).toBe('0.1.2');
   });
 
   it('автопроверка: интервал — раз в полдня', () => {
@@ -52,5 +54,20 @@ describe('updater helpers', () => {
     const stop = startAutoUpdater({ onDownloaded: () => {} });
     expect(typeof stop).toBe('function');
     stop(); // не должно падать
+  });
+
+  it('formatReleaseDate: ISO → по-русски, мусор → пусто', () => {
+    expect(formatReleaseDate('2026-09-19T10:38:12.800Z')).toContain('2026');
+    expect(formatReleaseDate(null)).toBe('');
+    expect(formatReleaseDate('мусор')).toBe('');
+  });
+
+  it('CHANGELOG: свежие сверху, у каждой версии есть описание', () => {
+    expect(CHANGELOG.length).toBeGreaterThan(0);
+    expect(CHANGELOG[0].version).toBe('0.1.2');
+    for (const e of CHANGELOG) {
+      expect(e.version).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(e.notes.length).toBeGreaterThan(0);
+    }
   });
 });

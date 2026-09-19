@@ -104,6 +104,29 @@ export function validateStudentForm(input: StudentFormInput): Record<string, str
   return errs;
 }
 
+/**
+ * Проверка даты рождения (поле необязательное).
+ * Год — строго 4 цифры: не даёт вбить 5-значный и позже честно валится.
+ * Возвращает текст ошибки или null если всё хорошо.
+ */
+export function validateBirthDate(raw: string): string | null {
+  const v = raw.trim();
+  if (v === '') return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return 'Дата — в формате ДД.ММ.ГГГГ';
+  const year = Number(m[1]);
+  const now = new Date();
+  if (year < 1900 || year > now.getFullYear()) {
+    return `Год — 4 цифры (1900–${now.getFullYear()})`;
+  }
+  const d = new Date(`${v}T00:00:00`);
+  if (Number.isNaN(d.getTime()) || d.getMonth() + 1 !== Number(m[2]) || d.getDate() !== Number(m[3])) {
+    return 'Некорректная дата';
+  }
+  if (d.getTime() > now.getTime()) return 'Дата рождения не может быть в будущем';
+  return null;
+}
+
 const mskDate = new Intl.DateTimeFormat('ru-RU', {
   timeZone: 'Europe/Moscow',
   day: '2-digit',

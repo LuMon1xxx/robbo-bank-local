@@ -3,6 +3,7 @@ import {
   formatMSK,
   mapBusinessError,
   validateAmountRU,
+  validateBirthDate,
   validateOperationForm,
   validateStudentForm,
 } from './ui-validation';
@@ -109,5 +110,33 @@ describe('formatMSK', () => {
     const s = formatMSK(new Date('2026-01-15T10:00:00.000Z').toISOString());
     expect(s).toContain('.');
     expect(s).toContain(':');
+  });
+});
+
+describe('validateBirthDate', () => {
+  it('пусто — можно (поле необязательное)', () => {
+    expect(validateBirthDate('')).toBeNull();
+  });
+
+  it('нормальная дата проходит', () => {
+    expect(validateBirthDate('2015-03-07')).toBeNull();
+  });
+
+  it('5-значный год и мусор — ошибка', () => {
+    expect(validateBirthDate('12345-01-01')).not.toBeNull();
+    expect(validateBirthDate('01.01.2015')).not.toBeNull();
+    expect(validateBirthDate('abcd')).not.toBeNull();
+  });
+
+  it('год вне диапазона и будущее — ошибка', () => {
+    expect(validateBirthDate('1899-05-05')).toContain('1900');
+    expect(validateBirthDate('2015-13-40')).not.toBeNull();
+    const nextYear = new Date().getFullYear() + 1;
+    expect(validateBirthDate(`${nextYear}-01-01`)).not.toBeNull();
+    const t = new Date(Date.now() + 24 * 60 * 60 * 1000); // завтра — всегда в будущем
+    const iso = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    const err = validateBirthDate(iso);
+    expect(err).not.toBeNull();
+    if (t.getFullYear() === new Date().getFullYear()) expect(err).toContain('будущ');
   });
 });

@@ -12,8 +12,10 @@ import { cn } from '../lib/utils';
 import { localRepo } from '../lib/localRepo';
 import { mapBusinessError } from '../lib/ui-validation';
 import {
+  CHANGELOG,
   checkForUpdates,
   downloadAndInstallUpdate,
+  formatReleaseDate,
   getAppVersion,
   relaunchApp,
   type UpdateStatus,
@@ -586,13 +588,15 @@ function UpdateCard() {
       )}
       {status?.status === 'uptodate' && (
         <p className="text-sm text-[var(--color-success-text)] dark:text-[var(--color-success-dark)]">
-          У вас последняя версия ({status.version}).
+          Установлена {status.version} — это последняя версия.
         </p>
       )}
       {status?.status === 'available' && (
         <div className="space-y-2">
           <p className="text-sm text-[var(--color-fg)]">
-            Доступна версия <b className="money-num">{status.version}</b>.
+            Установлена <span className="money-num">{status.currentVersion}</span>, вышла{' '}
+            <b className="money-num">{status.version}</b>
+            {status.date ? ` (${formatReleaseDate(status.date)})` : ''}.
             {status.notes ? ` Что нового: ${status.notes}` : ''}
           </p>
           <Button size="sm" onClick={() => void onInstall()} disabled={busy} data-testid="update-install">
@@ -645,6 +649,24 @@ function UpdateCard() {
           </Button>
         </div>
       )}
+
+      <details className="mt-4 text-sm">
+        <summary className="cursor-pointer text-[var(--color-muted-fg)] hover:text-[var(--color-fg)]">
+          Что нового в версиях
+        </summary>
+        <ul className="mt-2 space-y-2">
+          {CHANGELOG.map((e) => (
+            <li key={e.version} className="rounded-[var(--radius-m)] border border-[var(--color-border-color)] px-3 py-2">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <b className="money-num">{e.version}</b>
+                <span className="text-xs text-[var(--color-muted-fg)]">{e.date}</span>
+              </div>
+              <div className="font-medium text-[var(--color-fg)]">{e.title}</div>
+              <div className="text-xs text-[var(--color-muted-fg)]">{e.notes}</div>
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   );
 }
