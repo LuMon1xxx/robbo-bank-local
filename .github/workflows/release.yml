@@ -1,0 +1,42 @@
+# RobboBank · релиз по пушу тега v* (например v0.2.0).
+# Как выпустить версию: поднять version в tauri.conf.json + Cargo.toml
+# + APP_VERSION в src/lib/updater.ts, закоммитить, затем:
+#   git tag v0.2.0; git push origin v0.2.0
+# Action сам соберёт NSIS, подпишет и выложит в Releases вместе с latest.json.
+# Нужно один раз: в Settings → Secrets → Actions добавить
+#   TAURI_SIGNING_PRIVATE_KEY = содержимое robbo.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD = пароль (или пусто, если без пароля)
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'RobboBank ${{ github.ref_name }}'
+          releaseDraft: false
+          prerelease: false

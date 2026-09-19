@@ -1,0 +1,875 @@
+@import 'tailwindcss';
+
+/* Dark-вариант — по КЛАССУ .dark на <html> (ThemeToggle), а не по системной
+   теме. Без этого Tailwind 4 применяет dark:* утилиты по prefers-color-scheme:
+   у пользователя с тёмной Windows в «светлом» приложении лезли тёмные стили
+   (серая заливка и бледный текст активного пункта меню, репорт 25.08). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   ДИЗАЙН-ТОКЕНЫ (Tailwind 4 @theme → переменные попадают в :root)
+   Стиль A «Тёплый кабинет»: бумага + чернила + мох, мёд только для денег.
+   Никаких сине-фиолетовых градиентов и неона.
+   ========================================================================== */
+@theme {
+  /* Primary — мох (спокойный зеленый, белый на 600 = 6.1:1) */
+  --color-primary-100: #e6ede8;
+  --color-primary-300: #b9d2c3;
+  --color-primary-500: #4a7d65;
+  --color-primary-600: #335e4b;
+  --color-primary-700: #274e38;
+  --color-primary-800: #1d4a36;
+
+  /* Accent — мёд. ПРАВИЛО: только деньги (баланс, цены, награды),
+     никогда для интерактивных элементов и ошибок */
+  --color-gold-200: #fff3d6;
+  --color-gold-300: #f0c96a;
+  --color-gold-400: #dfa83c;
+  --color-gold-500: #c78f1f;
+  --color-gold-700: #7a5410;
+  --color-gold-ink: #3d2700;
+
+  /* Semantic */
+  --color-success-light: #e6ede8;
+  --color-success-dark: #8bb79b;
+  --color-success-fill: #335e4b;
+  --color-success-text: #274e38;
+
+  --color-danger-light: #f9e8e2;
+  --color-danger-dark: #d98a76;
+  --color-danger-fill: #a83a2a;
+  --color-danger-text: #7f2d20;
+
+  --color-warning-light: #fef0e6;
+  --color-warning-dark: #ffc53d;
+  --color-warning-fill: #f5a700;
+  --color-warning-text: #b54708;
+
+  /* Семантические алиасы для утилит Tailwind (text-destructive, bg-destructive/10,
+     text-success, text-muted-foreground) — иначе классы не генерируют CSS */
+  --color-destructive: #a83a2a;
+  --color-success: #335e4b;
+  --color-muted-foreground: #6f675c;
+
+  /* ==========================================================================
+     СТАНДАРТНЫЙ НАБОР shadcn-ТОКЕНОВ (bg-popover, bg-accent, bg-secondary,
+     bg-primary, text-popover-foreground и т.д.) — без них всплывающие панели
+     прозрачные, а кнопки выглядят сломанными в темах.
+     Light-значения; dark перекрывается в .dark ниже. */
+  --color-primary: #335e4b;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e6ede8;
+  --color-secondary-foreground: #274e38;
+  --color-accent: #f3ede0;
+  --color-accent-foreground: #29241b;
+  --color-popover: #fffdF8;
+  --color-popover-foreground: #29241b;
+  --color-input: #e3d8c3;
+  --color-ring: #b9d2c3;
+
+  /* Единая система анимаций: «аккуратный необанк» */
+  --dur-fast: 150ms;
+  --dur-med: 200ms;
+  --dur-panel: 260ms;
+  --ease-smooth: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* Нейтральные — light (значения по умолчанию) и dark (перекрываются .dark).
+     muted = ПОВЕРХНОСТЬ для утилит bg-muted (shadcn-конвенция), а не цвет
+     текста: раньше тут лежал #555869 (цвет текста), из-за чего сегментные
+     контролы/hover строк/skeleton в светлой теме получали тёмный фон.
+     Приглушённый ТЕКСТ — это --color-muted-foreground / --color-muted-fg. */
+  --color-background: #f5f0e6;
+  --color-card: #fffdf8;
+  --color-raised: #fffdf8;
+  --color-foreground: #29241b;
+  --color-muted: #ece4d3;
+  --color-border: #e3d8c3;
+
+  /* Радиусы (в v2 было 6px — осознанно крупнее) */
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Тени light-темы; в dark элевация даётся рамкой+ступенью поверхности (см. .dark) */
+  --shadow-rest: 0 1px 2px rgba(41, 36, 27, 0.07), 0 1px 3px rgba(41, 36, 27, 0.06);
+  --shadow-hover:
+    0 1px 2px rgba(41, 36, 27, 0.07), 0 1px 3px rgba(41, 36, 27, 0.06),
+    0 10px 28px -12px rgba(41, 36, 27, 0.25);
+  --shadow-hero: 0 12px 32px -12px rgba(41, 36, 27, 0.25);
+
+  /* Типографика: системные шрифты ( Inter, Nunito, Unbounded — убраны ) */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-portal: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-brand: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Density-пресеты: compact = админка (строка 40px, контролы 32–40px),
+     cozy = портал (списки ≥64px, контролы 52–56px).
+     Активируются классами .density-compact / .density-cozy на контейнере. */
+  --density-compact-row-height: 40px;
+  --density-compact-control-height: 36px;
+  --density-compact-control-height-sm: 32px;
+  --density-compact-gap: 8px;
+  --density-compact-padding-x: 12px;
+  --density-compact-padding-y: 4px;
+  --density-compact-font-size: 14px;
+  --density-compact-line-height: 20px;
+
+  --density-cozy-row-height: 64px;
+  --density-cozy-control-height: 56px;
+  --density-cozy-control-height-sm: 52px;
+  --density-cozy-gap: 12px;
+  --density-cozy-padding-x: 16px;
+  --density-cozy-padding-y: 8px;
+  --density-cozy-font-size: 16px;
+  --density-cozy-line-height: 24px;
+}
+
+/* ==========================================================================
+   СЕМАНТИЧЕСКИЕ АЛИАСЫ (то, что читают компоненты)
+   ========================================================================== */
+:root {
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-muted-fg: #6f675c;
+  --color-border-color: var(--color-border);
+
+  /* Hero-градиент: тёплый мох (light) — без фиолета */
+  --hero-stop-1: #274e38;
+  --hero-stop-2: #335e4b;
+  --hero-stop-3: #4a7d65;
+
+  /* Density по умолчанию — compact (админка) */
+  --density-row-height: var(--density-compact-row-height);
+  --density-control-height: var(--density-compact-control-height);
+  --density-control-height-sm: var(--density-compact-control-height-sm);
+  --density-gap: var(--density-compact-gap);
+  --density-padding-x: var(--density-compact-padding-x);
+  --density-padding-y: var(--density-compact-padding-y);
+  --density-font-size: var(--density-compact-font-size);
+  --density-line-height: var(--density-compact-line-height);
+}
+
+/* Dark: тёплая вечерняя тема (не сине-черная) */
+.dark {
+  /* БАЗОВАЯ ПАЛИТРА (утилиты text-foreground / bg-card / border-border
+     и т.п. читают именно эти имена) */
+  --color-background: #1d1a15;
+  --color-card: #262119;
+  --color-raised: #2e2820;
+  --color-foreground: #ede5d3;
+  /* muted = ПОВЕРХНОСТЬ (см. комментарий в :root); текст — muted-foreground */
+  --color-muted: #332d23;
+  --color-border: #3a342a;
+
+  /* Primary-тины: поверхность и текст поверх неё (staff-компоненты без dark:-вариантов). */
+  --color-primary-100: #22362c;
+  --color-primary-300: #8bb79b;
+  --color-primary-700: #cfe3d6;
+  --color-primary-800: #e6ede8;
+
+  /* Алиасы (компоненты с var(--color-*)) */
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-muted-fg: #b8ad99;
+  --color-border-color: var(--color-border);
+  --color-muted-foreground: #b8ad99;
+
+  /* shadcn-набор для тёмной темы */
+  --color-primary: #8bb79b;
+  --color-primary-foreground: #1d1a15;
+  --color-secondary: #332d23;
+  --color-secondary-foreground: #ede5d3;
+  --color-accent: #332d23;
+  --color-accent-foreground: #ede5d3;
+  --color-popover: #2e2820;
+  --color-popover-foreground: #ede5d3;
+  --color-input: #4a4234;
+  --color-ring: #8bb79b;
+
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-hover:
+    0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-hero: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+
+  /* Hero-градиент: тёплый мох (dark) */
+  --hero-stop-1: #1d4a36;
+  --hero-stop-2: #274e38;
+  --hero-stop-3: #335e4b;
+}
+
+/* ==========================================================================
+   ТЕМЫ ИНТЕРФЕЙСА (PKG-THEMES v2, ui-ux-pro-max): ocean / forest / sunset /
+   rose / graphite. Отсутствие [data-palette] = «Индиго» (дефолт выше не тронут).
+   Каждая тема — ПОЛНАЯ: перекрывает поверхности (фон/карточки/границы/muted),
+   текст (foreground / muted-fg), primary-рампу, shadcn-алиасы и hero-градиент
+   ОТДЕЛЬНО для light и dark. Нейтральные поверхности тонированы в цвет темы
+   (паттерн tinted surfaces), золото и семантика success/danger/warning общие.
+   Контрасты проверены: fg/bg ≥ 12; muted-fg/card ≥ 4.5; white-on-600 ≥ 4.5.
+   Dark-блоки ([data-palette].dark, специфичность 0-2-0) перекрывают .dark.
+   ========================================================================== */
+
+/* ---- Океан: холодные синие поверхности ---- */
+[data-palette='ocean'] {
+  --color-background: #f2f7fd;
+  --color-card: #ffffff;
+  --color-raised: #ffffff;
+  --color-muted: #e3ecf7;
+  --color-border: #d7e3f2;
+  --color-foreground: #101828;
+  --color-muted-fg: #4a5a72;
+  --color-muted-foreground: #4a5a72;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: var(--color-border);
+  --color-primary-100: #dbeafe;
+  --color-primary-300: #93c5fd;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb; /* white-on: 5.17 */
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary: #2563eb;
+  --color-secondary: #dbeafe;
+  --color-secondary-foreground: #1d4ed8;
+  --color-accent: #e9f1fb;
+  --color-accent-foreground: #101828;
+  --color-ring: #93c5fd;
+  --hero-stop-1: #1d4ed8;
+  --hero-stop-2: #2563eb;
+  --hero-stop-3: #0ea5e9;
+}
+[data-palette='ocean'].dark {
+  --color-background: #0c1420;
+  --color-card: #131e2e;
+  --color-raised: #1a2940;
+  --color-muted: #22334c;
+  --color-border: #2c405c;
+  --color-foreground: #eaf1fa;
+  --color-muted-fg: #9fb2ca;
+  --color-muted-foreground: #9fb2ca;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: #33486a;
+  --color-primary-100: #16283f;
+  --color-primary-300: #93c5fd;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #93c5fd;
+  --color-primary-800: #dbeafe;
+  --color-primary: #3b82f6;
+  --color-secondary: #22334c;
+  --color-secondary-foreground: #eaf1fa;
+  --color-accent: #22334c;
+  --color-accent-foreground: #eaf1fa;
+  --color-popover: #1a2940;
+  --color-popover-foreground: #eaf1fa;
+  --color-ring: #93c5fd;
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover:
+    0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-hero: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+  --hero-stop-1: #172554;
+  --hero-stop-2: #1e40af;
+  --hero-stop-3: #0369a1;
+}
+
+/* ---- Лес: зелёные природные поверхности ---- */
+[data-palette='forest'] {
+  --color-background: #f2faf4;
+  --color-card: #ffffff;
+  --color-raised: #ffffff;
+  --color-muted: #e3f2e8;
+  --color-border: #d3eadd;
+  --color-foreground: #12211a;
+  --color-muted-fg: #48604f;
+  --color-muted-foreground: #48604f;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: var(--color-border);
+  --color-primary-100: #dcfce7;
+  --color-primary-300: #86efac;
+  --color-primary-500: #16a34a;
+  --color-primary-600: #15803d; /* white-on: 5.01 */
+  --color-primary-700: #166534;
+  --color-primary-800: #14532d;
+  --color-primary: #15803d;
+  --color-secondary: #dcfce7;
+  --color-secondary-foreground: #166534;
+  --color-accent: #e9f5ee;
+  --color-accent-foreground: #12211a;
+  --color-ring: #86efac;
+  --hero-stop-1: #166534;
+  --hero-stop-2: #15803d;
+  --hero-stop-3: #22c55e;
+}
+[data-palette='forest'].dark {
+  --color-background: #0c1611;
+  --color-card: #12211a;
+  --color-raised: #182c22;
+  --color-muted: #213527;
+  --color-border: #2b4433;
+  --color-foreground: #e9f5ee;
+  --color-muted-fg: #9db8a6;
+  --color-muted-foreground: #9db8a6;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: #365244;
+  --color-primary-100: #132a1c;
+  --color-primary-300: #86efac;
+  --color-primary-500: #16a34a;
+  --color-primary-600: #15803d;
+  --color-primary-700: #86efac;
+  --color-primary-800: #dcfce7;
+  --color-primary: #16a34a;
+  --color-secondary: #213527;
+  --color-secondary-foreground: #e9f5ee;
+  --color-accent: #213527;
+  --color-accent-foreground: #e9f5ee;
+  --color-popover: #182c22;
+  --color-popover-foreground: #e9f5ee;
+  --color-ring: #86efac;
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover:
+    0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-hero: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+  --hero-stop-1: #14532d;
+  --hero-stop-2: #166534;
+  --hero-stop-3: #15803d;
+}
+
+/* ---- Закат: тёплые кремово-оранжевые поверхности ---- */
+[data-palette='sunset'] {
+  --color-background: #fdf6ef;
+  --color-card: #ffffff;
+  --color-raised: #ffffff;
+  --color-muted: #f7ead9;
+  --color-border: #efdcc2;
+  --color-foreground: #251808;
+  --color-muted-fg: #6b5642;
+  --color-muted-foreground: #6b5642;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: var(--color-border);
+  --color-primary-100: #ffedd5;
+  --color-primary-300: #fdba74;
+  --color-primary-500: #f97316;
+  --color-primary-600: #c2410c; /* white-on: 5.17 */
+  --color-primary-700: #9a3412;
+  --color-primary-800: #7c2d12;
+  --color-primary: #c2410c;
+  --color-secondary: #ffedd5;
+  --color-secondary-foreground: #9a3412;
+  --color-accent: #faf0e2;
+  --color-accent-foreground: #251808;
+  --color-ring: #fdba74;
+  --hero-stop-1: #9a3412;
+  --hero-stop-2: #ea580c;
+  --hero-stop-3: #f59e0b;
+}
+[data-palette='sunset'].dark {
+  --color-background: #191009;
+  --color-card: #231711;
+  --color-raised: #2e1f17;
+  --color-muted: #3a281c;
+  --color-border: #4a3324;
+  --color-foreground: #f9efe6;
+  --color-muted-fg: #c4a68d;
+  --color-muted-foreground: #c4a68d;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: #57402c;
+  --color-primary-100: #33200f;
+  --color-primary-300: #fdba74;
+  --color-primary-500: #f97316;
+  --color-primary-600: #c2410c;
+  --color-primary-700: #fdba74;
+  --color-primary-800: #ffedd5;
+  --color-primary: #ea580c;
+  --color-secondary: #3a281c;
+  --color-secondary-foreground: #f9efe6;
+  --color-accent: #3a281c;
+  --color-accent-foreground: #f9efe6;
+  --color-popover: #2e1f17;
+  --color-popover-foreground: #f9efe6;
+  --color-ring: #fdba74;
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover:
+    0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-hero: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  --hero-stop-1: #7c2d12;
+  --hero-stop-2: #c2410c;
+  --hero-stop-3: #d97706;
+}
+
+/* ---- Роза: розовые поверхности с малиновым акцентом ---- */
+[data-palette='rose'] {
+  --color-background: #fdf3f5;
+  --color-card: #ffffff;
+  --color-raised: #ffffff;
+  --color-muted: #f8e4ea;
+  --color-border: #efd3de;
+  --color-foreground: #26121a;
+  --color-muted-fg: #6d4a58;
+  --color-muted-foreground: #6d4a58;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: var(--color-border);
+  --color-primary-100: #ffe4e6;
+  --color-primary-300: #fda4af;
+  --color-primary-500: #f43f5e;
+  --color-primary-600: #be123c; /* white-on: 6.29 */
+  --color-primary-700: #9f1239;
+  --color-primary-800: #881337;
+  --color-primary: #be123c;
+  --color-secondary: #ffe4e6;
+  --color-secondary-foreground: #9f1239;
+  --color-accent: #faebef;
+  --color-accent-foreground: #26121a;
+  --color-ring: #fda4af;
+  --hero-stop-1: #9f1239;
+  --hero-stop-2: #e11d48;
+  --hero-stop-3: #f472b6;
+}
+[data-palette='rose'].dark {
+  --color-background: #190f14;
+  --color-card: #241520;
+  --color-raised: #301c29;
+  --color-muted: #3d2433;
+  --color-border: #4d2e41;
+  --color-foreground: #f9ecf1;
+  --color-muted-fg: #cba3b2;
+  --color-muted-foreground: #cba3b2;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: #5c394c;
+  --color-primary-100: #38172a;
+  --color-primary-300: #fda4af;
+  --color-primary-500: #f43f5e;
+  --color-primary-600: #be123c;
+  --color-primary-700: #fda4af;
+  --color-primary-800: #ffe4e6;
+  --color-primary: #f43f5e;
+  --color-secondary: #3d2433;
+  --color-secondary-foreground: #f9ecf1;
+  --color-accent: #3d2433;
+  --color-accent-foreground: #f9ecf1;
+  --color-popover: #301c29;
+  --color-popover-foreground: #f9ecf1;
+  --color-ring: #fda4af;
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover:
+    0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-hero: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+  --hero-stop-1: #881337;
+  --hero-stop-2: #be123c;
+  --hero-stop-3: #be185d;
+}
+
+/* ---- Графит: чистые нейтральные slate-поверхности ---- */
+[data-palette='graphite'] {
+  --color-background: #f4f5f7;
+  --color-card: #ffffff;
+  --color-raised: #ffffff;
+  --color-muted: #ebecef;
+  --color-border: #dde0e5;
+  --color-foreground: #15181d;
+  --color-muted-fg: #555b66;
+  --color-muted-foreground: #555b66;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: var(--color-border);
+  --color-primary-100: #e2e8f0;
+  --color-primary-300: #94a3b8;
+  --color-primary-500: #64748b;
+  --color-primary-600: #475569; /* white-on: 7.58 */
+  --color-primary-700: #334155;
+  --color-primary-800: #1e293b;
+  --color-primary: #475569;
+  --color-secondary: #e2e8f0;
+  --color-secondary-foreground: #334155;
+  --color-accent: #eff1f4;
+  --color-accent-foreground: #15181d;
+  --color-ring: #94a3b8;
+  --hero-stop-1: #1e293b;
+  --hero-stop-2: #334155;
+  --hero-stop-3: #64748b;
+}
+[data-palette='graphite'].dark {
+  --color-background: #0f1217;
+  --color-card: #171b21;
+  --color-raised: #1f242c;
+  --color-muted: #293039;
+  --color-border: #353d49;
+  --color-foreground: #eef1f5;
+  --color-muted-fg: #a3abb8;
+  --color-muted-foreground: #a3abb8;
+  --color-bg: var(--color-background);
+  --color-card-bg: var(--color-card);
+  --color-raised-bg: var(--color-raised);
+  --color-fg: var(--color-foreground);
+  --color-border-color: var(--color-border);
+  --color-input: #414b59;
+  --color-primary-100: #20262e;
+  --color-primary-300: #94a3b8;
+  --color-primary-500: #64748b;
+  --color-primary-600: #475569;
+  --color-primary-700: #94a3b8;
+  --color-primary-800: #e2e8f0;
+  --color-primary: #64748b;
+  --color-secondary: #293039;
+  --color-secondary-foreground: #eef1f5;
+  --color-accent: #293039;
+  --color-accent-foreground: #eef1f5;
+  --color-popover: #1f242c;
+  --color-popover-foreground: #eef1f5;
+  --color-ring: #94a3b8;
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover:
+    0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-hero: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+  --hero-stop-1: #0f172a;
+  --hero-stop-2: #1e293b;
+  --hero-stop-3: #334155;
+}
+/* Density-классы на корне или контейнере */
+.density-compact {
+  --density-row-height: var(--density-compact-row-height);
+  --density-control-height: var(--density-compact-control-height);
+  --density-control-height-sm: var(--density-compact-control-height-sm);
+  --density-gap: var(--density-compact-gap);
+  --density-padding-x: var(--density-compact-padding-x);
+  --density-padding-y: var(--density-compact-padding-y);
+  --density-font-size: var(--density-compact-font-size);
+  --density-line-height: var(--density-compact-line-height);
+}
+
+.density-cozy {
+  --density-row-height: var(--density-cozy-row-height);
+  --density-control-height: var(--density-cozy-control-height);
+  --density-control-height-sm: var(--density-cozy-control-height-sm);
+  --density-gap: var(--density-cozy-gap);
+  --density-padding-x: var(--density-cozy-padding-x);
+  --density-padding-y: var(--density-cozy-padding-y);
+  --density-font-size: var(--density-cozy-font-size);
+  --density-line-height: var(--density-cozy-line-height);
+}
+
+/* ==========================================================================
+   ФИРМЕННЫЕ ГРАДИЕНТЫ
+   ========================================================================== */
+
+/* Hero-карта баланса ученика (главный визуальный актив портала).
+   Стопы градиента — переменные, чтобы палитры (PKG-THEMES) перекрывали их;
+   золото-радиал общий для всех палитрок и тем. */
+.hero-balance-card {
+  position: relative;
+  background-image:
+    radial-gradient(120% 90% at 85% -10%, rgba(255, 197, 61, 0.3) 0%, transparent 55%),
+    linear-gradient(115deg, var(--hero-stop-1) 0%, var(--hero-stop-2) 48%, var(--hero-stop-3) 100%);
+  box-shadow:
+    var(--shadow-hero),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.dark .hero-balance-card {
+  background-image:
+    radial-gradient(120% 90% at 85% -10%, rgba(255, 197, 61, 0.22) 0%, transparent 55%),
+    linear-gradient(115deg, var(--hero-stop-1) 0%, var(--hero-stop-2) 48%, var(--hero-stop-3) 100%);
+  box-shadow:
+    0 12px 32px -8px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Монета RobboCoin */
+.coin-gradient {
+  background: linear-gradient(160deg, #ffe083 0%, #ffc53d 55%, #f5a700 100%);
+}
+
+/* Тряска (ошибка формы и т.п.): горизонтальная, ±6px, 300 мс.
+   Портальный вариант живёт в features/portal/portal.css (.portal-shake),
+   этот utility — общий для остального приложения.
+   prefers-reduced-motion гасится глобальным media-запросом ниже. */
+@keyframes animate-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+.animate-shake {
+  animation: animate-shake 0.3s ease-in-out;
+}
+
+/* ==========================================================================
+   БАЗОВЫЕ СТИЛИ
+   ========================================================================== */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary-300);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
+}
+
+/* ==========================================================================
+   ХОВЕР НАВИГАЦИИ ТОЛЬКО ДЛЯ МЫШИ.
+   На тач-экранах Chrome после тапа «залипает» :hover — пилюли навсегда
+   остаются на всех тронутых пунктах меню (баг-репорт 25.08). Поэтому
+   фоновый ховер живёт в media (hover) and (pointer: fine), а состояние
+   пункта передают активная пилюля и скользящий индикатор.
+   ========================================================================== */
+.nav-item {
+  transition:
+    background-color var(--dur-fast) var(--ease-smooth),
+    color var(--dur-fast) var(--ease-smooth),
+    transform var(--dur-fast) var(--ease-smooth);
+}
+.nav-item:active {
+  transform: scale(0.98);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-item:not([data-active='true']):hover {
+    background-color: color-mix(in srgb, var(--color-muted-fg) 7%, transparent);
+    color: var(--color-fg);
+  }
+  .nav-item-danger:hover {
+    background-color: color-mix(in srgb, var(--color-danger-fill) 10%, transparent);
+    color: var(--color-danger-text);
+  }
+}
+/* В тёмной теме текст опасной кнопки — светлый danger (правило нейтральных текстов) */
+.dark .nav-item-danger:hover {
+  color: var(--color-danger-dark);
+}
+
+/* ==========================================================================
+   КАСТОМИЗАЦИЯ КНОПОК (Settings → Внешний вид).
+   Форма: data-btn-shape на <html> задаёт --btn-radius, который читают
+   кнопки (rounded-[var(--btn-radius,...)] в button.tsx).
+   Стиль: data-btn-style='soft' перекрашивает primary-кнопку в мягкую
+   (тонированный фон + цветной текст) без изменения разметки.
+   ========================================================================== */
+[data-btn-shape='pill'] {
+  --btn-radius: 9999px;
+}
+[data-btn-shape='square'] {
+  --btn-radius: 4px;
+}
+
+[data-btn-style='soft'] [data-slot='button'][data-variant='default'] {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+[data-btn-style='soft'] [data-slot='button'][data-variant='default']:hover {
+  background-color: color-mix(in srgb, var(--color-primary-300) 55%, var(--color-primary-100));
+}
+.dark [data-btn-style='soft'] [data-slot='button'][data-variant='default'] {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-300);
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Числа денег всегда Inter с табличными цифрами (у Nunito tnum не гарантирован) */
+.money-num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   АНИМАЦИИ: единый аккуратный стандарт (150–200мс элементы, 260мс панели)
+   ========================================================================== */
+
+/* Плавные переходы по умолчанию для интерактивных элементов */
+button,
+a,
+[role='button'],
+[role='radio'],
+[role='option'],
+[role='switch'] {
+  transition:
+    background-color var(--dur-fast) var(--ease-smooth),
+    border-color var(--dur-fast) var(--ease-smooth),
+    color var(--dur-fast) var(--ease-smooth),
+    box-shadow var(--dur-med) var(--ease-smooth),
+    transform var(--dur-fast) var(--ease-smooth),
+    opacity var(--dur-fast) var(--ease-smooth);
+}
+
+/* Всплывающие панели (radix): появление/исчезновение через data-state */
+@keyframes robbo-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes robbo-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes robbo-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Смена страницы в AppShell: мягкое появление контента (не мешает работе) */
+@keyframes robbo-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-page-in {
+  animation: robbo-page-in var(--dur-panel) var(--ease-smooth);
+}
+@keyframes robbo-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes robbo-pop-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+[data-slot='popover-content'][data-state='open'],
+[data-slot='select-content'][data-state='open'],
+[data-slot='dropdown-menu-content'][data-state='open'] {
+  animation: robbo-pop-in var(--dur-panel) var(--ease-smooth);
+}
+[data-slot='popover-content'][data-state='closed'],
+[data-slot='select-content'][data-state='closed'],
+[data-slot='dropdown-menu-content'][data-state='closed'] {
+  animation: robbo-fade-out var(--dur-fast) var(--ease-smooth);
+}
+[data-slot='dialog-content'][data-state='open'] {
+  animation: robbo-pop-in var(--dur-panel) var(--ease-smooth);
+}
+[data-slot='dialog-overlay'][data-state='open'] {
+  animation: robbo-fade-in var(--dur-panel) var(--ease-smooth);
+}
+[data-slot='sheet-content'][data-state='open'] {
+  animation: robbo-slide-up var(--dur-panel) var(--ease-smooth);
+}
+
+/* Календарь в DatePicker: панель появляется как поповер */
+[data-slot='calendar-popover'] [data-slot='popover-content'] {
+  animation: robbo-pop-in var(--dur-panel) var(--ease-smooth);
+}
+
+/* Скроллбары */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted-fg);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-color) transparent;
+}
