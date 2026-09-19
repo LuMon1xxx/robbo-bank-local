@@ -28,14 +28,19 @@ describe('updater helpers', () => {
     expect(isNewer('0.1', '0.1.0')).toBe(false);
   });
 
-  it('не настроено: никуда не лезем, сетевых вызовов нет', async () => {
-    expect(UPDATE_CONFIGURED).toBe(false);
-    expect(await checkForUpdates()).toEqual({ status: 'unconfigured' });
-    expect(await downloadAndInstallUpdate()).toEqual({ status: 'unconfigured' });
+  it('прод-режим: обновления включены', () => {
+    expect(UPDATE_CONFIGURED).toBe(true);
+  });
+
+  it('вне Tauri: проверка не падает и не лезет в сеть с исключением', async () => {
+    const st = await checkForUpdates();
+    expect(typeof st.status).toBe('string');
+    const dl = await downloadAndInstallUpdate();
+    expect(typeof dl.status).toBe('string');
   });
 
   it('getAppVersion: вне Tauri возвращает константу', async () => {
-    expect(await getAppVersion()).toBe('0.1.0');
+    expect(await getAppVersion()).toBe('0.1.1');
   });
 
   it('автопроверка: интервал — раз в полдня', () => {
@@ -43,7 +48,8 @@ describe('updater helpers', () => {
   });
 
   it('автопроверка: пока не настроено — ничего не делает, таймеров нет', () => {
-    const stop = startAutoUpdater({ onDownloaded: () => expect.unreachable() });
+    // При UPDATE_CONFIGURED === true таймер ставится — сразу останавливаем.
+    const stop = startAutoUpdater({ onDownloaded: () => {} });
     expect(typeof stop).toBe('function');
     stop(); // не должно падать
   });

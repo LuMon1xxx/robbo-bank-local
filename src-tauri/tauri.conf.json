@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "RobboBank",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "ru.robbo.bank.local",
   "build": {
     "frontendDist": "../dist",
@@ -26,6 +26,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,6 +43,16 @@
         "languages": ["Russian", "English"],
         "installerHooks": "./installer-hooks.nsh"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMyM0ZGMzJBM0NGN0YwMQpSV1FCZjgrak12OGpETzJSSGhEcUtXeEZQdkZCdHdJTjdKb2VIMUZWTHYxdTM0dGxvRXBNaEZKNAo=",
+      "endpoints": [
+        "https://github.com/LuMon1xxx/robbo-bank-local/releases/latest/download/latest.json"
+      ]
     }
   }
 }

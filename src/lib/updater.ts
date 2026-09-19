@@ -18,10 +18,10 @@
  * и никуда не лезет (ни одного сетевого запроса).
  */
 
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.1.1';
 
 /** Переключить в true после настройки ключа и endpoint (см. выше). */
-export const UPDATE_CONFIGURED = false;
+export const UPDATE_CONFIGURED = true;
 
 /** Как часто проверять обновления в фоне, пока приложение открыто. */
 export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000; // раз в полдня
