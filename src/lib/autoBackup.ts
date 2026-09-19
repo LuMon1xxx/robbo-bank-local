@@ -100,24 +100,40 @@ export async function writeAutoBackup(): Promise<void> {
 
 /**
  * Подключить автобэкап к закрытию окна. Только в Tauri.
- * - onCloseRequested: preventDefault → backup → win.close().
- * - fallback beforeunload: best-effort void writeAutoBackup().
+ * - onCloseRequested: preventDefault → backup (с таймаутом!) → destroy().
+ *
+ * ВАЖНО: здесь было два бага, из-за которых крестик не закрывал окно:
+ * 1. win.close() внутри onCloseRequested ПОВТОРНО стреляет тем же событием
+ *    → prevent → backup → close → … — бесконечный цикл. Нужен destroy(),
+ *    который закрывает окно мимо события.
+ * 2. await writeAutoBackup() без таймаута: зависший flush/fs = окно висит
+ *    вечно. Гонка с таймером 3с — бэкап лучше потерять, чем не закрыть окно.
  */
 export function setupAutoBackupOnExit(): void {
   if (typeof window === 'undefined') return;
   window.addEventListener('beforeunload', () => {
     void writeAutoBackup();
   });
+  let closing = false;
   void (async () => {
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const win = getCurrentWindow();
       await win.onCloseRequested(async (event) => {
         event.preventDefault();
+        if (closing) {
+          // Повторный крестик во время бэкапа — закрыть немедленно.
+          await win.destroy().catch(() => {});
+          return;
+        }
+        closing = true;
         try {
-          await writeAutoBackup();
+          await Promise.race([
+            writeAutoBackup(),
+            new Promise((res) => setTimeout(res, 3000)),
+          ]);
         } finally {
-          await win.close();
+          await win.destroy().catch(() => {});
         }
       });
     } catch (e) {

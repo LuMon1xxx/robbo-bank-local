@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Download, Palette, Pencil, Plus, RefreshCw, RotateCcw, Settings, Trash2, Upload, Zap } from 'lucide-react';
+import { Check, Download, Moon, Palette, Pencil, Plus, RefreshCw, RotateCcw, Settings, Sun, Trash2, Upload, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import ThemeToggle from './ThemeToggle';
 import { PalettePicker } from './PalettePicker';
-import { getPalette, applyPalette } from '../lib/palette';
+import { getPalette, applyPalette, PALETTES, type PaletteId } from '../lib/palette';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -118,46 +118,89 @@ function setThemeMode(mode: 'light' | 'dark' | 'system') {
 }
 
 function ThemePresets({ onApplied }: { onApplied: () => void }) {
-  function applyPreset(kind: 'cabinet' | 'evening' | 'contrast') {
-    if (kind === 'cabinet') {
-      setThemeMode('light');
-      applyPalette('classic');
-      applyAppearance({ ...DEFAULT_APPEARANCE, primaryOverride: null, fontSize: 'md', radius: 'default' });
-      toast.success('Тема «Кабинет» применена');
-    } else if (kind === 'evening') {
-      setThemeMode('dark');
-      applyPalette('classic');
-      applyAppearance({ ...DEFAULT_APPEARANCE, primaryOverride: null, fontSize: 'md', radius: 'default' });
-      toast.success('Тема «Вечерняя смена» применена');
-    } else {
-      setThemeMode('light');
-      applyPalette('classic');
-      applyAppearance({ ...DEFAULT_APPEARANCE, primaryOverride: null, fontSize: 'lg', radius: 'default' });
-      toast.success('Контрастная тема применена');
-    }
+  const swatchOf = (id: PaletteId): readonly [string, string, string] =>
+    PALETTES.find((p) => p.id === id)?.swatch ?? ['#335e4b', '#4a7d65', '#b9d2c3'];
+
+  const presets = [
+    {
+      id: 'cabinet',
+      title: 'Кабинет',
+      desc: 'Тёплая бумага, мох',
+      palette: 'classic' as PaletteId,
+      mode: 'light' as const,
+      look: {},
+    },
+    {
+      id: 'evening',
+      title: 'Вечерняя смена',
+      desc: 'Тёплая тёмная',
+      palette: 'classic' as PaletteId,
+      mode: 'dark' as const,
+      look: {},
+    },
+    {
+      id: 'ocean',
+      title: 'Морская волна',
+      desc: 'Светлая, мягкие кнопки',
+      palette: 'ocean' as PaletteId,
+      mode: 'light' as const,
+      look: { radius: 'round', btnShape: 'pill' } as const,
+    },
+    {
+      id: 'forest',
+      title: 'Лесная поляна',
+      desc: 'Глубокая тёмная зелень',
+      palette: 'forest' as PaletteId,
+      mode: 'dark' as const,
+      look: {},
+    },
+    {
+      id: 'sunset',
+      title: 'Закат',
+      desc: 'Тёплая, крупнее шрифт',
+      palette: 'sunset' as PaletteId,
+      mode: 'light' as const,
+      look: { fontSize: 'lg', radius: 'round' } as const,
+    },
+    {
+      id: 'graphite',
+      title: 'Строгий',
+      desc: 'Тёмный, прямые углы',
+      palette: 'graphite' as PaletteId,
+      mode: 'dark' as const,
+      look: { radius: 'sharp', btnShape: 'square' } as const,
+    },
+  ];
+
+  function applyPreset(p: (typeof presets)[number]) {
+    setThemeMode(p.mode);
+    applyPalette(p.palette);
+    applyAppearance({ ...DEFAULT_APPEARANCE, primaryOverride: null, fontSize: 'md', ...p.look });
+    toast.success(`Тема «${p.title}» применена`);
     onApplied();
   }
 
-  const presets = [
-    { id: 'cabinet', title: 'Кабинет', desc: 'Тёплая бумага, мох', swatch: ['#335e4b', '#f5f0e6', '#fffdf8'], testId: 'theme-preset-cabinet' },
-    { id: 'evening', title: 'Вечерняя смена', desc: 'Тёплая тёмная', swatch: ['#8bb79b', '#1d1a15', '#262119'], testId: 'theme-preset-evening' },
-    { id: 'contrast', title: 'Контраст', desc: 'Крупный шрифт', swatch: ['#1d4a36', '#ffffff', '#f5f0e6'], testId: 'theme-preset-contrast' },
-  ] as const;
-
   return (
-    <div className="grid grid-cols-3 gap-2" role="group" aria-label="Готовые темы">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Готовые темы">
       {presets.map((p) => (
         <button
           key={p.id}
           type="button"
-          onClick={() => applyPreset(p.id)}
-          data-testid={p.testId}
+          onClick={() => applyPreset(p)}
+          data-testid={`theme-preset-${p.id}`}
           className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-[var(--radius-m)] border border-[var(--color-border-color)] px-2 py-2 text-xs transition-colors outline-none hover:text-[var(--color-fg)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary-300)]"
         >
-          <span className="flex overflow-hidden rounded-full ring-1 ring-black/10" aria-hidden="true">
-            {p.swatch.map((c) => (
-              <span key={c} className="h-5 w-5" style={{ backgroundColor: c }} />
-            ))}
+          <span className="flex items-center gap-1.5" aria-hidden="true">
+            <span className="flex overflow-hidden rounded-full ring-1 ring-black/10">
+              {swatchOf(p.palette).map((c) => (
+                <span key={c} className="h-5 w-5" style={{ backgroundColor: c }} />
+              ))}
+            </span>
+            {p.mode === 'dark' ? (
+              <Moon className="size-3.5 text-[var(--color-muted-fg)]" aria-hidden="true" />
+            ) : (
+              <Sun className="size-3.5 text-[var(--color-muted-fg)]" aria-hidden="true" />
+            )}
           </span>
           <span className="font-semibold text-[var(--color-fg)]">{p.title}</span>
           <span className="text-[11px] text-[var(--color-muted-fg)]">{p.desc}</span>
