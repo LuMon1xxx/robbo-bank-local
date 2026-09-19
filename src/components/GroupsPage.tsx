@@ -35,6 +35,7 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [moveTarget, setMoveTarget] = useState<{ id: string; fullName: string; from: string } | null>(null);
   const [moveValue, setMoveValue] = useState('');
+  const [moveNew, setMoveNew] = useState(false);
 
   // version в зависимостях: localRepo не реактивен, пересчёт по bump из App.
   const groups = useMemo(() => {
@@ -187,7 +188,7 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
                         variant="outline"
                         size="sm"
                         title="Перенести в другую группу"
-                        onClick={() => { setMoveTarget({ id: s.id, fullName: s.full_name, from: s.group_name }); setMoveValue(s.group_name); }}
+                        onClick={() => { setMoveTarget({ id: s.id, fullName: s.full_name, from: s.group_name }); setMoveValue(s.group_name); setMoveNew(false); }}
                         className="mr-1"
                       >
                         Перенос
@@ -278,24 +279,52 @@ export function GroupsPage({ version, authorName, onChanged, onToast }: GroupsPa
       )}
 
       {moveTarget && (
-        <Modal title="Перенос ученика" subtitle={`${moveTarget.fullName} · сейчас: ${moveTarget.from || 'без группы'}`} onClose={() => setMoveTarget(null)} maxWidth={420}>
+        <Modal title="Перенос ученика" subtitle={`${moveTarget.fullName} · сейчас: ${moveTarget.from || 'без группы'}`} onClose={() => { setMoveTarget(null); setMoveNew(false); }} maxWidth={420}>
           <Label className="text-xs text-[var(--color-muted-fg)]">
-            Новая группа (пусто = без группы)
-            <Input value={moveValue} onChange={(e) => setMoveValue(e.target.value)} maxLength={10} placeholder="А-1" list="groups-datalist" className="mt-1" />
-            <datalist id="groups-datalist">
+            Новая группа
+            <Select
+              value={moveNew ? '__new__' : moveValue}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '__new__') {
+                  setMoveNew(true);
+                  setMoveValue('');
+                } else {
+                  setMoveNew(false);
+                  setMoveValue(v);
+                }
+              }}
+              className="mt-1"
+              data-testid="move-group-select"
+            >
+              <option value="">Без группы</option>
               {groups.map((g) => (
-                <option key={g.name} value={g.name} />
+                <option key={g.name} value={g.name}>
+                  {g.name} ({g.count})
+                </option>
               ))}
-            </datalist>
+              <option value="__new__">＋ Новая группа…</option>
+            </Select>
+            {moveNew && (
+              <Input
+                value={moveValue}
+                onChange={(e) => setMoveValue(e.target.value)}
+                maxLength={10}
+                placeholder="Название, до 10 символов"
+                className="mt-1.5"
+                data-testid="move-group-new"
+              />
+            )}
           </Label>
           <div className="mt-3 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setMoveTarget(null)}>Отмена</Button>
+            <Button type="button" variant="outline" onClick={() => { setMoveTarget(null); setMoveNew(false); }}>Отмена</Button>
             <Button
               type="button"
               onClick={() => {
                 const t = moveTarget;
                 run(() => localRepo.moveStudent(t.id, moveValue), `«${t.fullName}» → ${moveValue.trim() || 'без группы'}`);
                 setMoveTarget(null);
+                setMoveNew(false);
               }}
             >
               Перенести
