@@ -874,6 +874,19 @@ input[type='radio'] {
   cursor: pointer;
 }
 
+/* Убираем нативные стрелки-степперы у числовых полей (выглядели белой
+   заплаткой в тёмной теме). Суммы вводятся с клавиатуры, стрелки ↑/↓
+   на клавиатуре продолжают работать. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Скроллбары */
 ::-webkit-scrollbar {
   width: 8px;
