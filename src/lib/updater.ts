@@ -18,7 +18,7 @@
  * и никуда не лезет (ни одного сетевого запроса).
  */
 
-export const APP_VERSION = '0.1.5';
+export const APP_VERSION = '0.1.6';
 
 /** Переключить в true после настройки ключа и endpoint (см. выше). */
 export const UPDATE_CONFIGURED = true;
@@ -164,6 +164,12 @@ export interface ChangelogEntry {
  * но история хранится здесь — сервер отдаёт только последний релиз.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.1.6',
+    date: '26 сентября 2026',
+    title: 'Крестик закрывает, автобэкап пишется',
+    notes: 'Окно закрывается по крестику (не хватало пермишена core:window:allow-destroy). Автобэкап при выходе реально пишется в backups (рекурсивные fs-пермишены). Убрана отладочная писанина.',
+  },
   {
     version: '0.1.5',
     date: '19 сентября 2026',

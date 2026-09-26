@@ -108,6 +108,11 @@ export async function writeAutoBackup(): Promise<void> {
  *    который закрывает окно мимо события.
  * 2. await writeAutoBackup() без таймаута: зависший flush/fs = окно висит
  *    вечно. Гонка с таймером 3с — бэкап лучше потерять, чем не закрыть окно.
+ * 3. win.destroy() требует пермишен core:window:allow-destroy в
+ *    src-tauri/capabilities/default.json (core:window:default его НЕ даёт:
+ *    там только allow-internal-toggle-maximize). Без пермишена destroy()
+ *    тихо отклоняется ACL, а preventDefault уже отменил закрытие —
+ *    окно висит навсегда. См. windowPermissions.test.ts.
  */
 export function setupAutoBackupOnExit(): void {
   if (typeof window === 'undefined') return;
